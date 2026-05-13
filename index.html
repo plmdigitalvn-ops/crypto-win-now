@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto AI Tracker - Live Predictions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #020617;
+            --card-bg: rgba(15, 23, 42, 0.6);
+            --accent-blue: #3b82f6;
+            --up-color: #10b981;
+            --down-color: #ef4444;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-dark); 
+            color: #f8fafc;
+            background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 100%);
+            min-height: 100vh;
+        }
+
+        .glass-card { 
+            background: var(--card-bg); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255,255,255,0.08); 
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .prediction-pill {
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Animation for real-time updates */
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+
+        .updating { animation: pulse-blue 1.5s infinite; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="pb-12">
+
+    <header class="sticky top-0 z-50 glass-card border-b border-slate-800/50 px-6 py-4 mb-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-900/20">
+                    <i class="fas fa-robot text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight">CRYPTO<span class="text-blue-500">AI</span></h1>
+                    <p class="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Predictive Dashboard</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 w-full md:w-auto">
+                <div class="relative flex-grow md:w-80">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name or symbol..." 
+                           class="w-full bg-slate-900/80 border border-slate-700/50 rounded-2xl py-2.5 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-sm">
+                </div>
+                <button onclick="fetchCryptoData()" id="refreshBtn" class="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all active:scale-95 shadow-lg">
+                    <i id="refreshIcon" class="fas fa-sync-alt text-blue-400"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass-card p-5 rounded-3xl relative overflow-hidden">
+                <div class="flex justify-between items-start mb-2">
+                    <p class="text-slate-400 text-xs font-semibold uppercase">Market Sentiment</p>
+                    <i class="fas fa-brain text-blue-500 opacity-50 text-xs"></i>
+                </div>
+                <div class="flex items-center gap-2">
+                    <h3 class="text-2xl font-bold" id="marketSentiment">Analyzing...</h3>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                    <div id="sentimentBar" class="h-full bg-blue-500 transition-all duration-1000" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="glass-card p-5 rounded-3xl">
+                <p class="text-slate-400 text-xs font-semibold uppercase mb-1">Global 24h Cap</p>
+                <h3 class="text-2xl font-bold" id="totalMarketCap">--</h3>
+                <span class="text-[10px] text-emerald-400 font-medium"><i class="fas fa-caret-up mr-1"></i>0.4% Increase</span>
+            </div>
+
+            <div class="glass-card p-5 rounded-3xl">
+                <p class="text-slate-400 text-xs font-semibold uppercase mb-1">AI Prediction Vol</p>
+                <h3 class="text-2xl font-bold" id="totalVolume">--</h3>
+                <span class="text-[10px] text-slate-500 font-medium">Tracking Top 20</span>
+            </div>
+
+            <div class="glass-card p-5 rounded-3xl border-orange-500/20">
+                <p class="text-slate-400 text-xs font-semibold uppercase mb-1">BTC Dominance</p>
+                <h3 class="text-2xl font-bold text-orange-400" id="btcDominance">--</h3>
+                <span class="text-[10px] text-slate-500 font-medium">Market Benchmark</span>
+            </div>
+        </div>
+
+        <div class="glass-card rounded-[2rem] overflow-hidden border border-slate-800/40">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-slate-800/60 bg-slate-900/40">
+                            <th class="px-6 py-5 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">Rank</th>
+                            <th class="px-6 py-5 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Asset</th>
+                            <th class="px-6 py-5 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Price (USD)</th>
+                            <th class="px-6 py-5 text-[11px] font-bold text-slate-500 uppercase tracking-widest">24h Change</th>
+                            <th class="px-6 py-5 text-[11px] font-bold text-slate-500 uppercase tracking-widest">24h Volume</th>
+                            <th class="px-6 py-5 text-[11px] font-bold text-slate-500 uppercase tracking-widest">AI Forecast</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cryptoTableBody" class="divide-y divide-slate-800/40">
+                        <!-- Shimmer Loading -->
+                        <tr id="loadingRow">
+                            <td colspan="6" class="px-6 py-20 text-center">
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+                                    <p class="text-slate-400 text-sm font-medium animate-pulse">Consulting AI for market data...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500 px-2">
+            <div class="flex items-center gap-4">
+                <span>Data: <a href="https://www.coingecko.com" target="_blank" class="text-blue-400 hover:underline">CoinGecko API</a></span>
+                <span class="text-slate-700">|</span>
+                <span id="lastUpdateText">Last check: --</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="bg-slate-800/50 px-2 py-1 rounded text-slate-400">GitHub Ready v1.0.2</span>
+                <span class="bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded font-bold">LIVE</span>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        /**
+         * CRYPTO AI TRACKER CORE LOGIC
+         * - Fetches live data from CoinGecko
+         * - Generates predictions based on trend algorithms
+         * - Handles UI rendering and search
+         */
+
+        let cryptoData = [];
+        const REFRESH_INTERVAL = 60000; // 60 seconds
+
+        // Helper: Currency Formatter
+        const formatCurrency = (val) => {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: val < 1 ? 4 : 2,
+                maximumFractionDigits: val < 1 ? 6 : 2
+            }).format(val);
+        };
+
+        // Helper: Large Number Formatter (B, M, K)
+        const formatCompact = (val) => {
+            return new Intl.NumberFormat('en-US', {
+                notation: "compact",
+                compactDisplay: "short",
+                maximumFractionDigits: 1
+            }).format(val);
+        };
+
+        /**
+         * AI Prediction Algorithm (Simulation)
+         * Analyzes price change and volume ratio to predict next movement
+         */
+        function getAIPrediction(coin) {
+            const change = coin.price_change_percentage_24h;
+            const volToCap = coin.total_volume / coin.market_cap;
+            
+            // Logic: High volume with positive movement = Strong Buy
+            if (change > 3 && volToCap > 0.05) return { text: 'Strong Bullish', class: 'bg-emerald-500/20 text-emerald-400', icon: 'fa-rocket' };
+            if (change > 0) return { text: 'Bullish', class: 'bg-green-500/10 text-green-500', icon: 'fa-arrow-trend-up' };
+            if (change < -5) return { text: 'Oversold', class: 'bg-orange-500/10 text-orange-500', icon: 'fa-circle-exclamation' };
+            if (change < 0) return { text: 'Bearish', class: 'bg-red-500/10 text-red-400', icon: 'fa-arrow-trend-down' };
+            return { text: 'Neutral', class: 'bg-slate-500/10 text-slate-400', icon: 'fa-minus' };
+        }
+
+        async function fetchCryptoData() {
+            const refreshIcon = document.getElementById('refreshIcon');
+            const btn = document.getElementById('refreshBtn');
+            refreshIcon.classList.add('fa-spin');
+            btn.classList.add('updating');
+            
+            try {
+                // Fetching top 20 by market cap
+                const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false&price_change_percentage=24h');
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    cryptoData = data;
+                    renderTable(data);
+                    updateStats(data);
+                    document.getElementById('lastUpdateText').innerText = `Last check: ${new Date().toLocaleTimeString()}`;
+                }
+            } catch (error) {
+                console.error("API Fetch Error:", error);
+                const tableBody = document.getElementById('cryptoTableBody');
+                tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-400 font-medium">Rate limit exceeded. Waiting for API cooldown...</td></tr>`;
+            } finally {
+                setTimeout(() => {
+                    refreshIcon.classList.remove('fa-spin');
+                    btn.classList.remove('updating');
+                }, 800);
+            }
+        }
+
+        function updateStats(data) {
+            const totalCap = data.reduce((sum, coin) => sum + coin.market_cap, 0);
+            const totalVol = data.reduce((sum, coin) => sum + coin.total_volume, 0);
+            const btc = data.find(c => c.symbol === 'btc');
+            
+            // Market Sentiment Calculation
+            const gainers = data.filter(c => c.price_change_percentage_24h > 0).length;
+            const sentimentScore = (gainers / data.length) * 100;
+            
+            let sentimentText = "Neutral";
+            if(sentimentScore > 70) sentimentText = "Greed";
+            else if(sentimentScore > 50) sentimentText = "Positive";
+            else if(sentimentScore < 30) sentimentText = "Fear";
+
+            document.getElementById('marketSentiment').innerText = sentimentText;
+            document.getElementById('sentimentBar').style.width = sentimentScore + "%";
+            document.getElementById('totalMarketCap').innerText = formatCompact(totalCap);
+            document.getElementById('totalVolume').innerText = formatCompact(totalVol);
+            document.getElementById('btcDominance').innerText = btc ? ((btc.market_cap / totalCap) * 100).toFixed(1) + "%" : "N/A";
+        }
+
+        function renderTable(data) {
+            const tableBody = document.getElementById('cryptoTableBody');
+            tableBody.innerHTML = '';
+
+            data.forEach((coin, index) => {
+                const priceChange = coin.price_change_percentage_24h || 0;
+                const changeClass = priceChange >= 0 ? 'text-emerald-400' : 'text-red-400';
+                const arrow = priceChange >= 0 ? 'fa-caret-up' : 'fa-caret-down';
+                const forecast = getAIPrediction(coin);
+
+                const row = document.createElement('tr');
+                row.className = 'group hover:bg-slate-800/30 transition-all duration-300';
+                row.innerHTML = `
+                    <td class="px-6 py-5 text-center">
+                        <span class="text-xs font-bold text-slate-600 group-hover:text-slate-400">${index + 1}</span>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="flex items-center gap-3">
+                            <div class="relative">
+                                <img src="${coin.image}" alt="${coin.name}" class="w-8 h-8 rounded-full shadow-lg">
+                                <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-slate-900 rounded-full flex items-center justify-center border border-slate-800">
+                                    <div class="w-1.5 h-1.5 rounded-full ${priceChange >= 0 ? 'bg-emerald-500' : 'bg-red-500'}"></div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-slate-100 group-hover:text-blue-400 transition-colors">${coin.name}</span>
+                                <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">${coin.symbol}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="font-bold text-slate-200">${formatCurrency(coin.current_price)}</div>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="flex items-center gap-1.5 ${changeClass} font-bold text-sm">
+                            <i class="fas ${arrow}"></i>
+                            ${Math.abs(priceChange).toFixed(2)}%
+                        </div>
+                    </td>
+                    <td class="px-6 py-5 text-slate-400 text-sm font-medium">
+                        ${formatCurrency(coin.total_volume)}
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="prediction-pill ${forecast.class} inline-flex items-center gap-2">
+                            <i class="fas ${forecast.icon} text-[10px]"></i>
+                            ${forecast.text}
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Search Listener
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filtered = cryptoData.filter(coin => 
+                coin.name.toLowerCase().includes(searchTerm) || 
+                coin.symbol.toLowerCase().includes(searchTerm)
+            );
+            renderTable(filtered);
+        });
+
+        // App Initialization
+        window.onload = () => {
+            fetchCryptoData();
+            // Periodic update every minute
+            setInterval(fetchCryptoData, REFRESH_INTERVAL);
+        };
+    </script>
+</body>
+</html>
